@@ -1,3 +1,9 @@
+begin
+  require "pay_choice"
+rescue LoadError
+  raise "Could not load the pay_choice gem.  Use `gem install pay_choice` to install it."
+end
+
 module ActiveMerchant #:nodoc:
   module Billing #:nodoc:
     class PayChoiceGateway < Gateway
