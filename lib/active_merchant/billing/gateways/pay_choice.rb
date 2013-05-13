@@ -7,74 +7,70 @@ end
 module ActiveMerchant #:nodoc:
   module Billing #:nodoc:
     class PayChoiceGateway < Gateway
-      self.test_url = 'https://example.com/test'
-      self.live_url = 'https://example.com/live'
-
       # The countries the gateway supports merchants from as 2 digit ISO country codes
       self.supported_countries = ['AU']
 
-      # The card types supported by the payment gateway
+      self.money_format = :dollars
+      self.default_currency = 'AUD'
       self.supported_cardtypes = [:visa, :master, :american_express, :discover]
+      self.homepage_url = "http://www.paychoice.com.au/"
+      self.display_name = "PayChoice"
 
-      # The homepage URL of the gateway
-      self.homepage_url = 'http://www.example.net/'
+      def initialize(options)
+        requires!(options, :login, :password)
 
-      # The name of the gateway
-      self.display_name = 'New Gateway'
-
-      def initialize(options = {})
-        #requires!(options, :login, :password)
         super
+
+        @login = options[:login]
+        @password = options[:password]
+        @environment = test? ? :sandbox : :production
+        @paychoice = PayChoice.new({
+          username: @login,
+          password: @password
+        }, @environment)
       end
 
       def authorize(money, creditcard, options = {})
-        post = {}
-        add_invoice(post, options)
-        add_creditcard(post, creditcard)
-        add_address(post, creditcard, options)
-        add_customer_data(post, options)
-
-        commit('authonly', money, post)
+        #purchase(money, creditcard, options)
       end
 
       def purchase(money, creditcard, options = {})
-        post = {}
-        add_invoice(post, options)
-        add_creditcard(post, creditcard)
-        add_address(post, creditcard, options)
-        add_customer_data(post, options)
+        result = @paychoice.create(
+          currency: self.default_currency,
+          amount: money,
+          reference: "Invoice #{Time.now.to_i}",
+          card: to_hash_from_credit_card(creditcard)
+        )
 
-        commit('sale', money, post)
+        response_from_charge_result result
       end
 
       def capture(money, authorization, options = {})
-        commit('capture', money, post)
+        #commit('capture', money, post)
       end
-
-      private
-
-      def add_customer_data(post, options)
-      end
-
-      def add_address(post, creditcard, options)
-      end
-
-      def add_invoice(post, options)
-      end
-
+ 
+      # add credit card details to be stored by Pay Choice.
       def add_creditcard(post, creditcard)
+        @paychoie.store_card(to_hash_from_credit_card(creditcard))
       end
 
-      def parse(body)
+     private
+     
+      def to_hash_from_credit_card(creditcard)
+        {
+          name: creditcard.name,
+          number: creditcard.number,
+          expiry_month: sprintf("%.2i", creditcard.month),
+          expiry_year: sprintf("%.4i", creditcard.year)[-2..-1],
+          cvv: creditcard.verification_value
+        }
       end
 
-      def commit(action, money, parameters)
-      end
-
-      def message_from(response)
-      end
-
-      def post_data(action, parameters = {})
+      def response_from_charge_result result
+        Response.new result['charge']['status_code'] == 0,
+                     result['charge']['status'],
+                     {},
+                     test: test?
       end
     end
   end
