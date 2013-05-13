@@ -3,30 +3,25 @@ require 'test_helper'
 class PayChoiceTest < Test::Unit::TestCase
   def setup
     @gateway = PayChoiceGateway.new(
-                 :login => 'login',
-                 :password => 'password'
-               )
+      login: "44f79424-2fdb-49e3-98a6-fc8d27de9934",
+      password: "f2B9E=B{9URs"
+    )
 
     @credit_card = credit_card
     @amount = 100
-
-    @options = {
-      :order_id => '1',
-      :billing_address => address,
-      :description => 'Store Purchase'
-    }
   end
 
   def test_successful_purchase
+
+
+    assert response = @gateway.purchase(@amount, @credit_card)
+    assert_instance_of Response, response
+    assert_success response
+    assert response.test?
     @gateway.expects(:ssl_post).returns(successful_purchase_response)
 
-    assert response = @gateway.purchase(@amount, @credit_card, @options)
-    assert_instance_of
-    assert_success response
-
     # Replace with authorization number from the successful response
-    assert_equal '', response.authorization
-    assert response.test?
+    #assert_equal '', response.authorization
   end
 
   def test_unsuccessful_request
